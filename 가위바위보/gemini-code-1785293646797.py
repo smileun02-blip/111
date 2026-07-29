@@ -2,7 +2,6 @@ import streamlit as st
 from PIL import Image, ImageOps
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.models import load_model
 
 # 페이지 기본 설정
 st.set_page_config(
@@ -39,15 +38,18 @@ st.markdown('<div class="sub-text">"당신이 낼 손모양, AI는 이미 다 �
 # 모델 및 라벨 로딩 (캐싱을 통해 성능 최적화)
 @st.cache_resource
 def load_rps_model():
-    # 티처블 머신 모델 파일과 라벨 파일 불러오기
-    model = load_model("keras_model.h5", compile=False)
-    class_names = open("labels.txt", "r", encoding="utf-8").readlines()
+    # Keras / Teachable Machine 모델 파일과 라벨 파일 불러오기
+    model = tf.keras.models.load_model("keras_model.h5", compile=False)
+    
+    with open("labels.txt", "r", encoding="utf-8") as f:
+        class_names = f.readlines()
     return model, class_names
 
 try:
     model, class_names = load_rps_model()
 except Exception as e:
-    st.error("⚠️ 'keras_model.h5' 또는 'labels.txt' 파일을 찾을 수 없습니다. 파일이 프로젝트 루트 폴더에 있는지 확인해주세요!")
+    st.error(f"⚠️ 모델 또는 라벨 파일 로드 실패: {e}")
+    st.info("📌 'keras_model.h5'와 'labels.txt' 파일이 파이썬 실행 파일과 같은 위치에 있는지 확인해주세요!")
     st.stop()
 
 st.write("---")
@@ -64,18 +66,19 @@ if img_file_buffer is not None:
     size = (224, 224)
     image = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
     
-    # 2. 넘파이 배열 변환 및 정규화
-    image_array = np.asarray(image)
-    normalized_image_array = (image_array.astype(np.float32) / 127.5) - 1
-    data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
-    data[0] = normalized_image_array
+    # 2. 넘파이 배열 변환 및 정규화 (티처블 머신 전처리 방식: (x / 127.5) - 1)
+    image_array = np.asarray(image, dtype=np.float32)
+    normalized_image_array = (image_array / 127.5) - 1.0
+    
+    # 모델 입력 형태 (1, 224, 224, 3) 배치 차원 추가
+    data = np.expand_dims(normalized_image_array, axis=0)
 
     # 3. 모델 예측 실행
     with st.spinner("AI가 당신의 무의식을 분석하는 중... 🧠"):
         prediction = model.predict(data)
-        index = np.argmax(prediction)
+        index = np.argmax(prediction[0])
         
-        # 라벨 텍스트 정제 (숫자 제거)
+        # 라벨 텍스트 정제 (앞의 숫자 및 공백 제거)
         raw_class_name = class_names[index].strip()
         class_name = raw_class_name.split(' ', 1)[-1] if ' ' in raw_class_name else raw_class_name
         confidence_score = float(prediction[0][index])
@@ -83,7 +86,7 @@ if img_file_buffer is not None:
     # 4. 분석 결과 출력 및 유머러스한 반응
     st.subheader("🔮 분석 완료!")
     
-    # 가위, 바위, 보에 따른 유머 멘트 및 폭죽 효과
+    # 가위, 바위, 보에 따른 유머 멘트 및 효과
     if "가위" in class_name:
         st.balloons()
         st.success(f"당신이 낸 것은 **[{class_name}]** 입니다! (확신도: {confidence_score * 100:.1f}%)")
