@@ -1,0 +1,5 @@
+my-rps-app/
+├── app.py              # 아래 작성된 스트림릿 코드
+├── keras_model.h5      # 티처블 머신에서 다운로드한 모델 파일
+├── labels.txt          # 티처블 머신에서 다운로드한 라벨 파일
+└── requirements.txt    # 필요한 패키지 버전 지정 파일
