@@ -1,7 +1,7 @@
 import streamlit as st
 from PIL import Image, ImageOps
 import numpy as np
-import tensorflow as np_tf
+import tensorflow as tf
 from tensorflow.keras.models import load_model
 
 # 페이지 기본 설정
